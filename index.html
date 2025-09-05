@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LatLon → what3words Converter</title>
+</head>
+<body>
+  <h1>Latitude, Longitude → what3words</h1>
+
+  <textarea id="input" rows="10" cols="40" placeholder="Enter lat,lon per line (e.g. 51.520847, -0.195521)"></textarea><br>
+  <button id="convertBtn">Convert</button>
+
+  <table id="resultTable" border="1" cellpadding="5" style="margin-top:20px; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>Input Coordinates</th>
+        <th>3-Word Address</th>
+        <th>Nearest Place</th>
+        <th>Map Link</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    document.getElementById('convertBtn').addEventListener('click', async () => {
+      const input = document.getElementById('input').value.trim();
+      const lines = input.split('\n');
+
+      const tbody = document.getElementById('resultTable').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      for (const line of lines) {
+        const coords = line.trim().replace(',', ' ').split(/\s+/);
+        if (coords.length < 2) continue;
+        const lat = coords[0], lng = coords[1];
+        const coordStr = encodeURIComponent(`${lat},${lng}`);
+        const url = `https://mapapi.what3words.com/api/convert-to-3wa?coordinates=${coordStr}&language=en&format=json`;
+
+        let words = 'Error', nearest = '-', mapUrl = '#';
+        try {
+          await sleep(500); // wait 0.5 sec before each call
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(resp.statusText);
+          const data = await resp.json();
+          words = data.words || 'N/A';
+          nearest = data.nearestPlace || '-';
+          mapUrl = data.map || '#';
+        } catch (err) {
+          console.error('Fetch error:', err);
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${lat}, ${lng}</td>
+          <td>${words}</td>
+          <td>${nearest}</td>
+          <td><a href="${mapUrl}" target="_blank">View Map</a></td>
+        `;
+        tbody.appendChild(row);
+      }
+    });
+  </script>
+</body>
+</html>
